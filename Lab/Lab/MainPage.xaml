@@ -25,7 +25,7 @@ x:Class="Lab.MainPage">
             <Button Text="Додати стовпчик" Clicked="AddColumnButton_Clicked" Margin="10,5,10,5"/>
         </StackLayout>
         <Entry x:Name="textInput" Placeholder="Введіть текст" Grid.Row="1"
-Grid.ColumnSpan="2" Text="" />
+Grid.ColumnSpan="2" Text="" Unfocused="PlaceHolderUnFocus" Completed="ApplyData"/>
         <ScrollView Grid.Row="2" Grid.ColumnSpan="2">
             <Grid x:Name="grid">
             </Grid>

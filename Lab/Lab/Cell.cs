@@ -24,7 +24,7 @@ namespace Lab
 
         public int X { get { return x; } }
         public int Y { get { return y; } }
-        public string Content { get { return content; } }
+        public string Content { get { return content; } set { content = value; } }
         public BoardPosition Position { get { return position; } }
     }
 }

@@ -11,6 +11,11 @@ namespace Lab
     {
         public string character;
         public int number;
+
+        public string GetFullPosition()
+        {
+            return character + number.ToString();
+        }
     }
 
     internal class GridBoard
@@ -67,5 +72,20 @@ namespace Lab
             return position;
         }
 
+        public bool CheckCellSyntax(int row, int column)
+        {
+            Cell cell = board[row][column];
+            string content = cell.Content;
+            List<string> errors = new();
+
+            bool res = FormulaEvaluator.IsCalculable(content, out errors);
+            return res;
+        }
+
+        public void ChangeContent(int row, int column, string content)
+        {
+            Cell cell = board[row][column];
+            cell.Content = content;
+        }
     }
 }

@@ -1,18 +1,16 @@
-﻿using Microsoft.Maui.Controls.Compatibility;
-using System;
-using System.Collections.Generic;
-using Grid = Microsoft.Maui.Controls.Grid;
+﻿using Grid = Microsoft.Maui.Controls.Grid;
+using Microsoft.Maui.Controls;
 namespace Lab
 {
     public partial class MainPage : ContentPage
     {
         GridBoard gridBoard;
-
+        Entry focusedCell;
 
         public MainPage()
         {
             InitializeComponent();
-            gridBoard = new GridBoard(10, 5);
+            gridBoard = new GridBoard(11, 10);
             ShowBoard();
         }
 
@@ -32,7 +30,7 @@ namespace Lab
                             {
                                 Text = (j + 1).ToString(),
                                 VerticalOptions = LayoutOptions.Center,
-                                HorizontalOptions = LayoutOptions.Center
+                                HorizontalOptions = LayoutOptions.Center,
                             };
                             Grid.SetRow(label, j + 1);
                             Grid.SetColumn(label, 0);
@@ -45,8 +43,12 @@ namespace Lab
                             {
                                 Text = gridBoard.board[i][j].Content,
                                 VerticalOptions = LayoutOptions.Center,
-                                HorizontalOptions = LayoutOptions.Center
+                                HorizontalOptions = LayoutOptions.Center,
                             };
+
+                            cell.Focused += Entry_Focuded;
+                            cell.Unfocused += Entry_Unfocused;
+
                             Grid.SetRow(cell, j + 1);
                             Grid.SetColumn(cell, i + 1);
                             grid.Children.Add(cell);
@@ -94,7 +96,11 @@ namespace Lab
             var col = Grid.GetColumn(entry) - 1;
             var content = entry.Text;
 
+            focusedCell = entry;
             textInput.Text = content;
+
+            gridBoard.ChangeContent(row, col, content);
+            entry.Background = Colors.Gray;
         }
 
         private void Entry_Unfocused(object sender, FocusEventArgs e)
@@ -103,8 +109,25 @@ namespace Lab
             var row = Grid.GetRow(entry) - 1;
             var col = Grid.GetColumn(entry) - 1;
             var content = entry.Text;
+
+            bool calculatable = gridBoard.CheckCellSyntax(row, col);
+            if (calculatable) {
+                entry.Background = Colors.Green;
+            } else
+            {
+                entry.Background = Colors.Red;
+            }
             // Додайте додаткову логіку, яка виконується при виході зі зміненої клітинки
         }
+
+        private void PlaceHolderUnFocus(object sender, FocusEventArgs e)
+        {
+            var placeHolder = (Entry)sender;
+            string text = placeHolder.Text;
+
+            focusedCell.Text = text;
+        }
+
         private void CalculateButton_Clicked(object sender, EventArgs e)
         {
             // Обробка кнопки "Порахувати"
@@ -128,9 +151,10 @@ namespace Lab
         }
         private async void HelpButton_Clicked(object sender, EventArgs e)
         {
-            await DisplayAlert("Довідка", "Лабораторна робота 1. Студента Власенка Захара К-25",
+            await DisplayAlert("Довідка", "Лабораторна робота 1. Студента Власенка Захара К-25. Варіант 59: реалізувати операції +, - (унарні операції);піднесення у степінь; іnc, dec; =, <, >; not;",
             "OK");
         }
+        
         private void DeleteRowButton_Clicked(object sender, EventArgs e)
         {
 
@@ -148,6 +172,14 @@ namespace Lab
         private void AddColumnButton_Clicked(object sender, EventArgs e)
         {
 
+        }
+
+        private void ApplyData(object sender, EventArgs e)
+        {
+            var placeHolder = (Entry)sender;
+            string text = placeHolder.Text;
+
+            focusedCell.Text = text;
         }
     }
 }
