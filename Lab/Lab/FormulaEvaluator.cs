@@ -96,18 +96,18 @@ public static class FormulaEvaluator
         }
     }
 
-    public static double Evaluate(string formula, Dictionary<string, double> cellValues, out List<string> errors)
+    public static float Evaluate(string formula, Dictionary<string, float> cellValues, out List<string> errors)
     {
         errors = new List<string>();
         if (!IsCalculable(formula, out errors))
         {
             errors.Add("Formula is not calculable.");
-            return double.NaN;
+            return float.NaN;
         }
 
         try
         {
-            Stack<double> values = new Stack<double>();
+            Stack<float> values = new Stack<float>();
             Stack<string> operators = new Stack<string>();
             string[] tokens = Tokenize(formula);
 
@@ -115,28 +115,28 @@ public static class FormulaEvaluator
             {
                 if (IsNumber(token))
                 {
-                    values.Push(double.Parse(token));
+                    values.Push(float.Parse(token));
                 }
                 else if (IsCellReference(token))
                 {
-                    if (cellValues.TryGetValue(token, out double cellValue))
+                    if (cellValues.TryGetValue(token, out float cellValue))
                         values.Push(cellValue);
                     else
                         throw new Exception($"Undefined cell reference {token}");
                 }
                 else if (token == "inc")
                 {
-                    if (values.TryPop(out double val))
+                    if (values.TryPop(out float val))
                         values.Push(val + 1);
                 }
                 else if (token == "dec")
                 {
-                    if (values.TryPop(out double val))
+                    if (values.TryPop(out float val))
                         values.Push(val - 1);
                 }
                 else if (token == "not")
                 {
-                    if (values.TryPop(out double val))
+                    if (values.TryPop(out float val))
                         values.Push(val == 0 ? 1 : 0);
                 }
                 else if (IsOperator(token))
@@ -165,7 +165,7 @@ public static class FormulaEvaluator
         catch (Exception ex)
         {
             errors.Add($"Evaluation error: {ex.Message}");
-            return double.NaN;
+            return float.NaN;
         }
     }
 
@@ -210,11 +210,11 @@ public static class FormulaEvaluator
         };
     }
 
-    private static void ApplyOperator(string op, Stack<double> values)
+    private static void ApplyOperator(string op, Stack<float> values)
     {
-        double right = values.Pop();
-        double left = values.Pop();
-        double result = op switch
+        float right = values.Pop();
+        float left = values.Pop();
+        float result = op switch
         {
             "+" => left + right,
             "-" => left - right,
@@ -223,7 +223,7 @@ public static class FormulaEvaluator
             "=" => left == right ? 1 : 0,
             ">" => left > right ? 1 : 0,
             "<" => left < right ? 1 : 0,
-            "^" => Math.Pow(left, right),
+            "^" => (float)Math.Pow(left, right),
             _ => throw new Exception($"Unsupported operator: {op}")
         };
         values.Push(result);

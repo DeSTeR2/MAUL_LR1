@@ -1,95 +1,105 @@
 ﻿using Grid = Microsoft.Maui.Controls.Grid;
 using Microsoft.Maui.Controls;
+using static System.Net.Mime.MediaTypeNames;
+using CommunityToolkit.Maui.Storage;
 namespace Lab
 {
     public partial class MainPage : ContentPage
     {
         GridBoard gridBoard;
         Entry focusedCell;
+        Cell focusedBoardCell;
+        FileSystem fileSystem;
 
-        public MainPage()
+        public MainPage(IFileSaver fileSaver)
         {
             InitializeComponent();
             gridBoard = new GridBoard(11, 10);
             ShowBoard();
+
+            fileSystem = new FileSystem(fileSaver);
         }
 
         private void ShowBoard()
         {
-            int childNumber = 0;
-            for (int i = 0; i <= gridBoard.board.Count; i++)
+            int rowCount = gridBoard.board.Count;
+            int columnCount = gridBoard.board[0].Count;
+
+            grid.Children.Clear();
+            grid.RowDefinitions.Clear();
+            grid.ColumnDefinitions.Clear();
+
+            grid.AddRowDefinition(new RowDefinition { Height = GridLength.Auto });
+            grid.AddColumnDefinition(new ColumnDefinition { Width = GridLength.Auto });
+
+            for (int j = 0; j < columnCount; j++)
             {
-                if (i < gridBoard.board.Count)
+                var columnHeader = new Label
                 {
-                    for (int j = 0; j < gridBoard.board[i].Count; j++)
-                    {
-                        if (j + 1 >= grid.RowDefinitions.Count)
-                        {
-                            grid.AddRowDefinition(new RowDefinition());
-                            var label = new Label()
-                            {
-                                Text = (j + 1).ToString(),
-                                VerticalOptions = LayoutOptions.Center,
-                                HorizontalOptions = LayoutOptions.Center,
-                            };
-                            Grid.SetRow(label, j + 1);
-                            Grid.SetColumn(label, 0);
-                            grid.Children.Add(label);
-                        }
+                    Text = GetExcelColumnName(j + 1),  
+                    VerticalOptions = LayoutOptions.Center,
+                    HorizontalOptions = LayoutOptions.Center,
+                    FontAttributes = FontAttributes.Bold
+                };
+                Grid.SetRow(columnHeader, 0);
+                Grid.SetColumn(columnHeader, j + 1);
+                grid.Children.Add(columnHeader);
 
-                        if (childNumber >= grid.Children.Count - gridBoard.board.Count - gridBoard.board[0].Count)
-                        {
-                            Entry cell = new Entry
-                            {
-                                Text = gridBoard.board[i][j].Content,
-                                VerticalOptions = LayoutOptions.Center,
-                                HorizontalOptions = LayoutOptions.Center,
-                            };
+                grid.AddColumnDefinition(new ColumnDefinition { Width = GridLength.Star });
+            }
 
-                            cell.Focused += Entry_Focuded;
-                            cell.Unfocused += Entry_Unfocused;
-
-                            Grid.SetRow(cell, j + 1);
-                            Grid.SetColumn(cell, i + 1);
-                            grid.Children.Add(cell);
-                        }
-                        childNumber++;
-                    }
-                }
-
-                if (i > 0)
+            for (int i = 0; i < rowCount; i++)
+            {
+                var rowHeader = new Label
                 {
-                    if (gridBoard.board.Count >= grid.ColumnDefinitions.Count)
-                    {
-                        grid.AddColumnDefinition(new ColumnDefinition());
-                        BoardPosition pos = gridBoard.board[i - 1][0].Position;
-                        var label = new Label()
-                        {
-                            Text = pos.character,
-                            VerticalOptions = LayoutOptions.Center,
-                            HorizontalOptions = LayoutOptions.Center
-                        };
-                        Grid.SetColumn(label, i);
-                        Grid.SetRow(label, 0);
-                        grid.Children.Add(label);
-                    }
-                } else
+                    Text = (i + 1).ToString(),
+                    VerticalOptions = LayoutOptions.Center,
+                    HorizontalOptions = LayoutOptions.Center,
+                    FontAttributes = FontAttributes.Bold
+                };
+                Grid.SetRow(rowHeader, i + 1);
+                Grid.SetColumn(rowHeader, 0);
+                grid.Children.Add(rowHeader);
+
+                grid.AddRowDefinition(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            for (int i = 0; i < rowCount; i++)
+            {
+                for (int j = 0; j < columnCount; j++)
                 {
-                    grid.AddColumnDefinition(new ColumnDefinition());
-                    var label = new Label()
+                    Entry cell = new Entry
                     {
+                        Text = gridBoard.board[i][j].Content,
                         VerticalOptions = LayoutOptions.Center,
                         HorizontalOptions = LayoutOptions.Center
                     };
-                    Grid.SetColumn(label, i);
-                    Grid.SetRow(label, 0);
-                    grid.Children.Add(label);
+
+                    cell.Focused += Entry_Focused;
+                    cell.Unfocused += Entry_Unfocused;
+
+                    Grid.SetRow(cell, i + 1);
+                    Grid.SetColumn(cell, j + 1);
+                    grid.Children.Add(cell);
                 }
-                
             }
         }
 
-        private void Entry_Focuded(object sender, FocusEventArgs e)
+        private string GetExcelColumnName(int index)
+        {
+            string columnName = "";
+            while (index > 0)
+            {
+                index--;  
+                columnName = (char)('A' + (index % 26)) + columnName;
+                index /= 26;
+            }
+            return columnName;
+        }
+
+
+
+        private void Entry_Focused(object sender, FocusEventArgs e)
         {
             var entry = (Entry)sender;
             var row = Grid.GetRow(entry) - 1;
@@ -97,10 +107,10 @@ namespace Lab
             var content = entry.Text;
 
             focusedCell = entry;
+            focusedBoardCell = gridBoard.board[row][col];
             textInput.Text = content;
 
             gridBoard.ChangeContent(row, col, content);
-            entry.Background = Colors.Gray;
         }
 
         private void Entry_Unfocused(object sender, FocusEventArgs e)
@@ -110,14 +120,8 @@ namespace Lab
             var col = Grid.GetColumn(entry) - 1;
             var content = entry.Text;
 
-            bool calculatable = gridBoard.CheckCellSyntax(row, col);
-            if (calculatable) {
-                entry.Background = Colors.Green;
-            } else
-            {
-                entry.Background = Colors.Red;
-            }
-            // Додайте додаткову логіку, яка виконується при виході зі зміненої клітинки
+            focusedCell.Text = content;
+            focusedBoardCell.Content = content;
         }
 
         private void PlaceHolderUnFocus(object sender, FocusEventArgs e)
@@ -126,19 +130,44 @@ namespace Lab
             string text = placeHolder.Text;
 
             focusedCell.Text = text;
+            focusedBoardCell.Content = text;
+            focusedCell.TextColor = Colors.Aqua;
         }
 
-        private void CalculateButton_Clicked(object sender, EventArgs e)
+        private async void CalculateButton_Clicked(object sender, EventArgs e)
         {
-            // Обробка кнопки "Порахувати"
+            List<string> errors = new();
+            float evaluation = gridBoard.GetEvaluation(focusedBoardCell.X, focusedBoardCell.Y);
+            errors = gridBoard.GetErrors();
+
+            if (errors.Count == 0)
+            {
+                focusedCell.Text = evaluation.ToString();
+            } else
+            {
+                string error = "";
+                for (int i=0; i<errors.Count; i++)
+                {
+                    error += errors[i] + "\n";
+                }
+
+                await DisplayAlert("Error!", error, "OK");
+            }
         }
         private void SaveButton_Clicked(object sender, EventArgs e)
         {
-            // Обробка кнопки "Зберегти"
+            fileSystem.Save(gridBoard);
         }
-        private void ReadButton_Clicked(object sender, EventArgs e)
+        private async void ReadButton_Clicked(object sender, EventArgs e)
         {
-            // Обробка кнопки "Прочитати"
+            GridBoard board = await fileSystem.LoadAsync();
+            if (board == null)
+            {
+                await DisplayAlert("Помилка зчитування", "Ви обрали не валідний файл!", "OK");
+            }
+
+            gridBoard = board;
+            ShowBoard();
         }
         private async void ExitButton_Clicked(object sender, EventArgs e)
         {
@@ -157,11 +186,13 @@ namespace Lab
         
         private void DeleteRowButton_Clicked(object sender, EventArgs e)
         {
-
+            gridBoard.DeleteRow();
+            ShowBoard();
         }
         private void DeleteColumnButton_Clicked(object sender, EventArgs e)
         {
-
+            gridBoard.DeleteColumn();
+            ShowBoard();
         }
 
         private void AddRowButton_Clicked(object sender, EventArgs e)
@@ -171,7 +202,8 @@ namespace Lab
         }
         private void AddColumnButton_Clicked(object sender, EventArgs e)
         {
-
+            gridBoard.AddColumn();
+            ShowBoard();
         }
 
         private void ApplyData(object sender, EventArgs e)
@@ -180,6 +212,9 @@ namespace Lab
             string text = placeHolder.Text;
 
             focusedCell.Text = text;
+            focusedBoardCell.Content = text;
+
+            focusedCell.TextColor = Colors.Aqua;
         }
     }
 }
