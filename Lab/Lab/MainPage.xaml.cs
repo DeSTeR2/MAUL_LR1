@@ -110,6 +110,8 @@ namespace Lab
             focusedBoardCell = gridBoard.board[row][col];
             textInput.Text = content;
 
+            entry.Text = focusedBoardCell.Content;
+
             gridBoard.ChangeContent(row, col, content);
         }
 
@@ -120,8 +122,13 @@ namespace Lab
             var col = Grid.GetColumn(entry) - 1;
             var content = entry.Text;
 
-            focusedCell.Text = content;
+            if (focusedBoardCell.Content != null || focusedBoardCell.Content != "")
+            {
+                focusedCell.Text = focusedBoardCell.CalculatedData.ToString();
+            }
+
             focusedBoardCell.Content = content;
+            Evaluate();
         }
 
         private void PlaceHolderUnFocus(object sender, FocusEventArgs e)
@@ -136,23 +143,7 @@ namespace Lab
 
         private async void CalculateButton_Clicked(object sender, EventArgs e)
         {
-            List<string> errors = new();
-            float evaluation = gridBoard.GetEvaluation(focusedBoardCell.X, focusedBoardCell.Y);
-            errors = gridBoard.GetErrors();
-
-            if (errors.Count == 0)
-            {
-                focusedCell.Text = evaluation.ToString();
-            } else
-            {
-                string error = "";
-                for (int i=0; i<errors.Count; i++)
-                {
-                    error += errors[i] + "\n";
-                }
-
-                await DisplayAlert("Error!", error, "OK");
-            }
+            Evaluate();
         }
         private void SaveButton_Clicked(object sender, EventArgs e)
         {
@@ -215,6 +206,28 @@ namespace Lab
             focusedBoardCell.Content = text;
 
             focusedCell.TextColor = Colors.Aqua;
+        }
+
+        private async void Evaluate()
+        {
+            List<string> errors = new();
+            float evaluation = gridBoard.GetEvaluation(focusedBoardCell.X, focusedBoardCell.Y);
+            errors = gridBoard.GetErrors();
+
+            if (errors.Count == 0)
+            {
+                focusedCell.Text = evaluation.ToString();
+            }
+            else
+            {
+                string error = "";
+                for (int i = 0; i < errors.Count; i++)
+                {
+                    error += errors[i] + "\n";
+                }
+
+                await DisplayAlert("Error!", error, "OK");
+            }
         }
     }
 }

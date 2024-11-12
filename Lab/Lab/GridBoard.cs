@@ -35,7 +35,7 @@
             {
                 List<Cell> cellRow = new List<Cell>();
                 for (int j = 0; j < column; j++) {
-                    cellRow.Add(new Cell(i, j, "0"));
+                    cellRow.Add(new Cell(i, j));
                 }
                 board.Add(cellRow);
             }
@@ -46,7 +46,7 @@
             List<Cell> cellRow = new List<Cell>();
             for (int j = 0; j < column; j++)
             {
-                cellRow.Add(new Cell(board.Count, j, "0"));
+                cellRow.Add(new Cell(board.Count, j));
             }
             board.Add(cellRow);
             row++;
@@ -55,7 +55,7 @@
         public void AddColumn() { 
             for (int i=0; i<row; i++)
             {
-                board[i].Add(new Cell(i, column, "0"));
+                board[i].Add(new Cell(i, column));
             }
             column++;
         }
@@ -164,9 +164,10 @@
                 List<string> linkCalcErrors = new();
                 float evaluation = FormulaEvaluator.Evaluate(content, calculatedCells, out linkCalcErrors);
 
-                if (linkCalcErrors.Count == 0)
+                if (linkCalcErrors.Count == 0 && evaluation != float.NaN)
                 {
                     calculatedCells.Add(boardPosition, evaluation);
+                    cell.CalculatedData = evaluation;
                     return evaluation;
                 }
                 errors.AddRange(linkCalcErrors);

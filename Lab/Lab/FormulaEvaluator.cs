@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 public static class FormulaEvaluator
 {
@@ -11,6 +8,11 @@ public static class FormulaEvaluator
     public static bool IsCalculable(string formula, out List<string> errors)
     {
         errors = new List<string>();
+
+        if (formula == null || formula == "")
+        {
+            return false;
+        }
 
         if (!Regex.IsMatch(formula, Pattern))
         {
@@ -101,7 +103,6 @@ public static class FormulaEvaluator
         errors = new List<string>();
         if (!IsCalculable(formula, out errors))
         {
-            errors.Add("Formula is not calculable.");
             return float.NaN;
         }
 
@@ -124,20 +125,9 @@ public static class FormulaEvaluator
                     else
                         throw new Exception($"Undefined cell reference {token}");
                 }
-                else if (token == "inc")
+                else if (token == "inc" || token == "dec" || token == "not")
                 {
-                    if (values.TryPop(out float val))
-                        values.Push(val + 1);
-                }
-                else if (token == "dec")
-                {
-                    if (values.TryPop(out float val))
-                        values.Push(val - 1);
-                }
-                else if (token == "not")
-                {
-                    if (values.TryPop(out float val))
-                        values.Push(val == 0 ? 1 : 0);
+                    operators.Push(token);
                 }
                 else if (IsOperator(token))
                 {
@@ -186,15 +176,21 @@ public static class FormulaEvaluator
 
     private static string[] Tokenize(string formula)
     {
-        return TokenizerRegex.Matches(formula)
-                             .Cast<Match>()
-                             .Select(match => match.Value)
-                             .ToArray();
+        try
+        {
+            return TokenizerRegex.Matches(formula)
+                                 .Cast<Match>()
+                                 .Select(match => match.Value)
+                                 .ToArray();
+        }
+        catch {
+            return [""];
+        }
     }
 
     private static bool IsOperator(string token) => "+-*/=><^".Contains(token);
 
-    private static bool IsNumber(string token) => double.TryParse(token, out _);
+    private static bool IsNumber(string token) => float.TryParse(token, out _);
 
     private static bool IsCellReference(string token) => Regex.IsMatch(token, @"^{[A-Za-z]+\d+}$");
 
@@ -206,26 +202,42 @@ public static class FormulaEvaluator
             "*" or "/" => 2,
             "^" => 3,
             "=" or ">" or "<" => 0,
+            "inc" or "dec" or "not" => 4,  // Give high precedence for unary operators
             _ => -1
         };
     }
 
     private static void ApplyOperator(string op, Stack<float> values)
     {
-        float right = values.Pop();
-        float left = values.Pop();
-        float result = op switch
+        if (op == "inc" || op == "dec" || op == "not")
         {
-            "+" => left + right,
-            "-" => left - right,
-            "*" => left * right,
-            "/" => left / right,
-            "=" => left == right ? 1 : 0,
-            ">" => left > right ? 1 : 0,
-            "<" => left < right ? 1 : 0,
-            "^" => (float)Math.Pow(left, right),
-            _ => throw new Exception($"Unsupported operator: {op}")
-        };
-        values.Push(result);
+            float val = values.Pop();
+            float result = op switch
+            {
+                "inc" => val + 1,
+                "dec" => val - 1,
+                "not" => val == 0 ? 1 : 0,
+                _ => throw new Exception($"Unsupported operator: {op}")
+            };
+            values.Push(result);
+        }
+        else
+        {
+            float right = values.Pop();
+            float left = values.Pop();
+            float result = op switch
+            {
+                "+" => left + right,
+                "-" => left - right,
+                "*" => left * right,
+                "/" => left / right,
+                "=" => left == right ? 1 : 0,
+                ">" => left > right ? 1 : 0,
+                "<" => left < right ? 1 : 0,
+                "^" => (float)Math.Pow(left, right),
+                _ => throw new Exception($"Unsupported operator: {op}")
+            };
+            values.Push(result);
+        }
     }
 }
