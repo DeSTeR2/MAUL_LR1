@@ -1,4 +1,6 @@
-﻿namespace Lab
+﻿using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
+
+namespace Lab
 {
     public struct BoardPosition
     {
@@ -16,6 +18,7 @@
         public List<List<Cell>> board { get; private set; } = new List<List<Cell>>();
         Dictionary<string, float> calculatedCells = new();
 
+        HashSet<Cell> cellsInProgress = new();
         List<string> errors = new();
 
         public int column { get; private set; }
@@ -128,51 +131,67 @@
         {
             Cell cell = board[row][column];
             string content = cell.Content;
-            List<string> errors = new();
 
-            bool res = FormulaEvaluator.IsCalculable(content, out errors);
+            bool res = FormulaEvaluator.IsCalculable(content, ref errors);
             return res;
+        }
+
+        private bool UpdateDependents(Cell cell)
+        {
+            if (cellsInProgress.Contains(cell)) return false;
+            cellsInProgress.Add(cell);
+
+            foreach (var dependent in cell.GetDependents())
+            {
+                string boardPosition = "{" + dependent.Position.GetFullPosition() + "}";
+                if (calculatedCells.ContainsKey(boardPosition))
+                {
+                    calculatedCells.Remove(boardPosition);
+                }
+
+                GetEvaluation(dependent.X, dependent.Y);
+                UpdateDependents(dependent);
+            }
+            cellsInProgress.Remove(cell);
+            return true;
         }
 
         public float GetEvaluation(int row, int column)
         {
             Cell cell = board[row][column];
             string content = cell.Content;
-            string boardPosition = cell.Position.GetFullPosition();
-            boardPosition = "{" + boardPosition + "}";
+            string boardPosition = "{" + cell.Position.GetFullPosition() + "}";
 
-            if (calculatedCells.ContainsKey(boardPosition)) {
+
+            if (calculatedCells.ContainsKey(boardPosition))
                 return calculatedCells[boardPosition];
-            }
 
             List<string> links = FormulaEvaluator.GetAllCellLinks(content);
-            List<Cell> requareToCalculate = new();
+
+            if (cellsInProgress.Contains(cell))
+            {
+                errors.Add("A cell cannot depend on itself.");
+                return float.NaN;
+            }
+
+            cellsInProgress.Add(cell);
 
             foreach (string link in links)
             {
-                if (calculatedCells.ContainsKey(link) == false)
-                {
-                    Cell cellToCalc = GetCellFromBoardPosition(link);
-                    requareToCalculate.Add(cellToCalc);
+                Cell referencedCell = GetCellFromBoardPosition(link);
 
-                    GetEvaluation(cellToCalc.X, cellToCalc.Y);
+                if (!float.IsNaN(GetEvaluation(referencedCell.X, referencedCell.Y)))
+                {
+                    cell.AddReference(referencedCell); 
                 }
             }
 
-            if (errors.Count == 0)
-            {
-                List<string> linkCalcErrors = new();
-                float evaluation = FormulaEvaluator.Evaluate(content, calculatedCells, out linkCalcErrors);
+            float evaluation = FormulaEvaluator.Evaluate(content, calculatedCells, ref errors);
+            calculatedCells[boardPosition] = evaluation;
+            cell.CalculatedData = evaluation;
 
-                if (linkCalcErrors.Count == 0 && evaluation != float.NaN)
-                {
-                    calculatedCells.Add(boardPosition, evaluation);
-                    cell.CalculatedData = evaluation;
-                    return evaluation;
-                }
-                errors.AddRange(linkCalcErrors);
-            }
-            return float.NaN; 
+            cellsInProgress.Remove(cell);
+            return evaluation;
         }
 
         public List<string> GetErrors()
@@ -186,12 +205,45 @@
         {
             Cell cell = board[row][column];
             cell.Content = content;
-
-            string position = cell.Position.GetFullPosition();
+            string position = "{" + cell.Position.GetFullPosition() + "}";
 
             if (calculatedCells.ContainsKey(position))
             {
                 calculatedCells.Remove(position);
+            }
+        }
+
+        public void ChangeContent(Cell cell, ref List<string> errors)
+        {
+            string position = "{" + cell.Position.GetFullPosition() + "}";
+            if (calculatedCells.ContainsKey(position))
+            {
+                calculatedCells.Remove(position);
+            }
+
+            int row = cell.X;
+            int column = cell.Y;
+
+            cellsInProgress = new();
+
+            cell.ResetReferences();
+            GetEvaluation(row, column);
+            if (UpdateDependents(cell) == false)
+            {
+                cell.Content = "#SELFREF";
+                cell.CalculatedData = 0;
+                errors.Add("A cell cannot depend on itself.");
+            }
+
+            errors.AddRange(GetErrors());
+        }
+
+        public void EvaluateBoard()
+        {
+            for (int i = 0; i < board.Count; i++) {
+                for (int j = 0; j < board[i].Count; j++) { 
+                    ChangeContent(board[i][j], ref errors);
+                }
             }
         }
     }

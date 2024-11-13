@@ -2,6 +2,7 @@
 using Microsoft.Maui.Controls;
 using static System.Net.Mime.MediaTypeNames;
 using CommunityToolkit.Maui.Storage;
+using System.Runtime.CompilerServices;
 namespace Lab
 {
     public partial class MainPage : ContentPage
@@ -11,6 +12,8 @@ namespace Lab
         Cell focusedBoardCell;
         FileSystem fileSystem;
 
+        Dictionary<Cell, Entry> cells;
+
         public MainPage(IFileSaver fileSaver)
         {
             InitializeComponent();
@@ -18,10 +21,18 @@ namespace Lab
             ShowBoard();
 
             fileSystem = new FileSystem(fileSaver);
+            Cell.OnDataChanges += UpdateCell;
+        }
+
+        ~MainPage()
+        {
+            Cell.OnDataChanges -= UpdateCell;
         }
 
         private void ShowBoard()
         {
+            cells = new();
+
             int rowCount = gridBoard.board.Count;
             int columnCount = gridBoard.board[0].Count;
 
@@ -78,9 +89,20 @@ namespace Lab
                     cell.Focused += Entry_Focused;
                     cell.Unfocused += Entry_Unfocused;
 
+                    if (float.IsNaN(gridBoard.board[i][j].CalculatedData) == false)
+                    {
+                        cell.Text = gridBoard.board[i][j].CalculatedData.ToString();
+                    }
+                    else
+                    {
+                        cell.Text = gridBoard.board[i][j].Content;
+                    }
+
                     Grid.SetRow(cell, i + 1);
                     Grid.SetColumn(cell, j + 1);
                     grid.Children.Add(cell);
+
+                    cells.Add(gridBoard.board[i][j], cell); 
                 }
             }
         }
@@ -122,13 +144,16 @@ namespace Lab
             var col = Grid.GetColumn(entry) - 1;
             var content = entry.Text;
 
-            if (focusedBoardCell.Content != null || focusedBoardCell.Content != "")
+            if (string.IsNullOrEmpty(focusedBoardCell.Content) == false && float.IsNaN(focusedBoardCell.CalculatedData) == false)
             {
                 focusedCell.Text = focusedBoardCell.CalculatedData.ToString();
             }
 
-            focusedBoardCell.Content = content;
-            Evaluate();
+            if (content != "NaN" && string.IsNullOrEmpty(content) == false)
+            {
+                focusedBoardCell.Content = content;
+                Evaluate();
+            }
         }
 
         private void PlaceHolderUnFocus(object sender, FocusEventArgs e)
@@ -141,7 +166,7 @@ namespace Lab
             focusedCell.TextColor = Colors.Aqua;
         }
 
-        private async void CalculateButton_Clicked(object sender, EventArgs e)
+        private void CalculateButton_Clicked(object sender, EventArgs e)
         {
             Evaluate();
         }
@@ -159,6 +184,10 @@ namespace Lab
 
             gridBoard = board;
             ShowBoard();
+
+            gridBoard.EvaluateBoard();
+            List<string> errors = gridBoard.GetErrors();
+            ShowErrors(errors);
         }
         private async void ExitButton_Clicked(object sender, EventArgs e)
         {
@@ -208,26 +237,40 @@ namespace Lab
             focusedCell.TextColor = Colors.Aqua;
         }
 
-        private async void Evaluate()
+        private void Evaluate()
         {
             List<string> errors = new();
-            float evaluation = gridBoard.GetEvaluation(focusedBoardCell.X, focusedBoardCell.Y);
             errors = gridBoard.GetErrors();
 
-            if (errors.Count == 0)
+            gridBoard.ChangeContent(focusedBoardCell, ref errors);
+
+            if (errors.Count == 0 && float.IsNaN(focusedBoardCell.CalculatedData) == false)
             {
-                focusedCell.Text = evaluation.ToString();
+                focusedCell.Text = focusedBoardCell.CalculatedData.ToString();
             }
             else
-            {
-                string error = "";
-                for (int i = 0; i < errors.Count; i++)
-                {
-                    error += errors[i] + "\n";
-                }
-
-                await DisplayAlert("Error!", error, "OK");
+            {   
+                ShowErrors(errors);
             }
         }
+
+        private async void ShowErrors(List<string> errors)
+        {
+            if (errors.Count == 0) return;
+
+            string error = "";
+            for (int i = 0; i < errors.Count; i++)
+            {
+                error += errors[i] + "\n";
+            }
+
+            await DisplayAlert("Error!", error, "OK");
+        }
+
+        private void UpdateCell(Cell cell)
+        {
+            Entry entry = cells[cell];
+            entry.Text = cell.CalculatedData.ToString();
+        }    
     }
 }

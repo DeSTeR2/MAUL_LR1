@@ -25,6 +25,11 @@ namespace Lab
                 for (int j=0; j < column; j++)
                 {
                     string content = board.board[i][j].Content;
+                    if (string.IsNullOrEmpty(content))
+                    {
+                        content = ".";
+                    }
+
                     content = content.Replace(" ", "");
                     text += content + " ";
                 }
@@ -50,6 +55,7 @@ namespace Lab
             for (int i=2; i < textRows.Length - 1; i++)
             {
                 string[] line = textRows[i].Split(" ");
+
                 for (int j = 0; j < line.Length - 1; j++)
                 {
                     try
@@ -59,7 +65,10 @@ namespace Lab
                     }
                     catch
                     {
-                        board.board[i - 2][j].Content = line[j];
+                        if (line[j] != ".")
+                        {
+                            board.board[i - 2][j].Content = line[j];
+                        }
                     }
                 }
             }

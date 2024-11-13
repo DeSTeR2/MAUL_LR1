@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.Design;
+﻿using System.Collections.Generic;
 
 namespace Lab
 {
@@ -6,65 +6,75 @@ namespace Lab
     {
         int x, y;
         string content = null;
-        float calculatedData = 0;
+        float calculatedData = float.NaN;
         BoardPosition position;
 
-        List<Cell> references = new();
+        HashSet<Cell> references = new(); 
+        HashSet<Cell> dependents = new();
 
-        public Cell(int x,int y, string content)
+        public static Action<Cell> OnDataChanges;
+
+        public Cell(int x, int y, string content)
         {
             this.x = x;
             this.y = y;
             this.content = content;
-
             this.position = GridBoard.GetCellsBoardPosition(this);
         }
 
-        public Cell(int x,int y)
+        public Cell(int x, int y)
         {
             this.x = x;
             this.y = y;
-
             this.position = GridBoard.GetCellsBoardPosition(this);
         }
 
+        public List<Cell> GetReferences() => references.ToList();
         public void AddReference(Cell cell)
         {
-            references.Add(this);
+            references.Add(cell);
+            cell.dependents.Add(this); 
         }
 
-        public void DeleteReference(Cell cell)
+        public void ResetReferences()
         {
-            if (references.Contains(cell)) {
-                references.Remove(cell);
+            foreach (var reference in references)
+            {
+                reference.dependents.Remove(this); 
             }
+            references.Clear();
         }
 
-        public int X { get { return x; } }
-        public int Y { get { return y; } }
+        public List<Cell> GetDependents() => dependents.ToList(); 
 
-        public int X_boardPos { get { return y; } }
-        public int Y_boardPos { get { return x; } }
+        public int X => x;
+        public int Y => y;
 
-        public string Content { 
-            get { return content; } 
-            set {
-                if (value != "Nan")
+        public string Content
+        {
+            get => content;
+            set
+            {
+                if (!string.IsNullOrEmpty(value) && value != "NaN")
                 {
                     content = value;
                 }
-            } 
+            }
         }
 
-        public float CalculatedData { 
-            get { return calculatedData; } 
-            set {
-                if (value != float.NaN) {
+        public float CalculatedData
+        {
+            get => calculatedData;
+            set
+            {
+                if (!float.IsNaN(value))
+                {
                     calculatedData = value;
+                    OnDataChanges?.Invoke(this);
                 }
-            } 
+            }
         }
 
-        public BoardPosition Position { get { return position; } }
+        public BoardPosition Position => position;
     }
 }
