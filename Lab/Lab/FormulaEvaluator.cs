@@ -228,6 +228,12 @@ namespace Lab
             {
                 float right = values.Pop();
                 float left = values.Pop();
+
+                if (op == "/" && right == 0)
+                {
+                    throw new Exception("Divition by zero");
+                }
+
                 float result = op switch
                 {
                     "+" => left + right,
